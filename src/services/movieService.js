@@ -9,8 +9,8 @@ export const fetchMovieDetails = (id) =>
 export const rateMovie = (id, rating) =>
   api.post(`/movies/${id}/rate`, { rating });
 
-export const fetchRecommendations = () =>
-  api.get('/recommendations');
+export const fetchRecommendations = (userId) =>
+  api.get(`/recommendations/${userId}`);
 
 export const fetchUserProfile = () =>
   api.get('/users/profile');

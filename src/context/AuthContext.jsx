@@ -1,9 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
+import { AuthContext } from './authContext.js';
 
-const AuthContext = createContext(null);
-
-export const AuthProvider = ({ children }) => {
+export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const [loading, setLoading] = useState(false);
@@ -22,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', credentials);
+      const { data } = await api.post('/login', credentials);
       if (data.token) {
         setToken(data.token);
         localStorage.setItem('token', data.token);
@@ -30,19 +29,25 @@ export const AuthProvider = ({ children }) => {
       if (data.user) {
         setUser(data.user);
       }
-      return data;
-    } finally {
       setLoading(false);
+      return data;
+    } catch (error) {
+      setLoading(false);
+      console.error("Login error:", error.response?.data || error.message);
+      throw error;
     }
   };
 
   const register = async (payload) => {
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', payload);
-      return data;
-    } finally {
+      const { data } = await api.post('/register', payload);
       setLoading(false);
+      return data;
+    } catch (error) {
+      setLoading(false);
+      console.error("Register error:", error.response?.data || error.message);
+      throw error;
     }
   };
 
@@ -67,7 +72,5 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => useContext(AuthContext);
+}
 

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchMovieDetails, rateMovie } from '../services/movieService.js';
 import RatingStars from '../components/RatingStars.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
+import useAuth from '../context/useAuth.js';
+import { getMoviePoster } from '../utils/movieHelpers.js';
 
 export default function MovieDetails() {
   const { id } = useParams();
@@ -12,7 +13,7 @@ export default function MovieDetails() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const loadMovie = async () => {
+  const loadMovie = useCallback(async () => {
     setError('');
     try {
       const { data } = await fetchMovieDetails(id);
@@ -21,11 +22,11 @@ export default function MovieDetails() {
     } catch {
       setError('Failed to load movie details.');
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadMovie();
-  }, [id]);
+  }, [loadMovie]);
 
   const handleRate = async (rating) => {
     if (!isAuthenticated) return;
@@ -52,19 +53,38 @@ export default function MovieDetails() {
   return (
     <div className="grid gap-8 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <div className="space-y-4">
-        <div className="overflow-hidden rounded-xl bg-zinc-900">
-          {movie?.posterUrl && (
+        <div className="overflow-hidden rounded-xl bg-zinc-900 ring-1 ring-white/10">
+          {getMoviePoster(movie) ? (
             <img
-              src={movie.posterUrl}
-              alt={movie.title}
+              src={getMoviePoster(movie)}
+              alt={movie?.title ?? 'Movie poster'}
               className="w-full object-cover"
+              loading="lazy"
             />
+          ) : (
+            <div className="flex aspect-[2/3] w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-black to-zinc-900 p-6">
+              <div className="text-center">
+                <div className="text-xs uppercase tracking-widest text-gray-400">
+                  MovieSense
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {movie?.title ?? 'Untitled'}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
       <div className="space-y-4">
         <h1 className="text-3xl font-bold text-white">{movie?.title}</h1>
-        <p className="text-sm text-gray-400">{movie?.description}</p>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wide">
+            Summary
+          </h2>
+          <p className="text-sm leading-relaxed text-gray-300">
+            {movie?.longDescription ?? movie?.description}
+          </p>
+        </div>
 
         <div className="flex flex-wrap gap-3 text-sm text-gray-300">
           {movie?.genre && (

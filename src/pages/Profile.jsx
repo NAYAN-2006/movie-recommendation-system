@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchUserProfile, fetchWatchHistory } from '../services/movieService.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import useAuth from '../context/useAuth.js';
 import MovieCard from '../components/MovieCard.jsx';
 
 export default function Profile() {

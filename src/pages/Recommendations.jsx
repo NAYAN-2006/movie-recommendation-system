@@ -1,22 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
 import { fetchRecommendations } from '../services/movieService.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import useAuth from '../context/useAuth.js';
 import MovieCard from '../components/MovieCard.jsx';
+import SkeletonMovieCard from '../components/SkeletonMovieCard.jsx';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export default function Recommendations() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !user?.id) return;
     const load = async () => {
       setLoading(true);
       setError('');
       try {
-        const { data } = await fetchRecommendations();
+        const { data } = await fetchRecommendations(user.id);
         setMovies(data.movies ?? data);
       } catch {
         setError('Failed to load recommendations.');
@@ -25,14 +33,14 @@ export default function Recommendations() {
       }
     };
     load();
-  }, [token]);
+  }, [token, user?.id]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold text-white">For You</h1>
+        <h1 className="text-3xl font-semibold text-white">Recommended for You</h1>
         <p className="text-sm text-gray-400">
-          Movies recommended based on your taste and watch history.
+          Hand-picked titles based on your watch history and preferences.
         </p>
       </div>
 
@@ -58,14 +66,38 @@ export default function Recommendations() {
         </div>
       )}
 
-      {loading && <p className="text-sm text-gray-400">Loading recommendations...</p>}
       {error && <p className="text-sm text-red-400">{error}</p>}
+
       <section>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-          {movies.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
-          ))}
-        </div>
+        <motion.div
+          className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.05 } },
+          }}
+        >
+          {loading
+            ? Array.from({ length: 10 }).map((_, idx) => (
+                <motion.div
+                  key={idx}
+                  variants={cardVariants}
+                  className="w-full"
+                >
+                  <SkeletonMovieCard />
+                </motion.div>
+              ))
+            : movies.map((movie) => (
+                <motion.div
+                  key={movie.id ?? movie.movie_id}
+                  variants={cardVariants}
+                  className="w-full"
+                >
+                  <MovieCard movie={movie} />
+                </motion.div>
+              ))}
+        </motion.div>
       </section>
     </div>
   );
