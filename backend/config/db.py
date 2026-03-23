@@ -1,10 +1,10 @@
-import os
 from mysql.connector import pooling, Error
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("root", "root")
-DB_NAME = os.getenv("DB_NAME", "movie_recommendation")
+# Hardcoded MySQL credentials
+host = "localhost"
+user = "root"
+password = "root"
+database = "movie_recommendation"
 
 _connection_pool = None
 
@@ -20,17 +20,16 @@ def init_db_pool():
       pool_name="movie_pool",
       pool_size=10,
       pool_reset_session=True,
-      host=DB_HOST,
-      user=DB_USER,
-      password=DB_PASSWORD,
-      database=DB_NAME,
+      host=host,
+      user=user,
+      password=password,
+      database=database,
     )
     print("MySQL connection pool initialised.")
   except Error as e:
     print(f"Error initialising MySQL connection pool: {e}")
     print(
-      "Check your MySQL credentials. Set DB_HOST/DB_USER/DB_PASSWORD/DB_NAME in backend/.env "
-      "(copy from backend/.env.example)."
+      "Check your MySQL credentials."
     )
     raise
 

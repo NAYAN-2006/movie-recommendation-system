@@ -1,29 +1,84 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from mysql.connector import Error
 from config.db import get_connection
 
 
-def get_all_movies() -> List[Dict[str, Any]]:
-  """Return all movies with director name."""
-  query = """
+def list_genres() -> List[str]:
+  conn = get_connection()
+  try:
+    with conn.cursor() as cursor:
+      cursor.execute("SELECT genre_name FROM genres ORDER BY genre_name")
+      return [row[0] for row in cursor.fetchall() if row and row[0]]
+  except Error as e:
+    print(f"Error in list_genres: {e}")
+    raise
+  finally:
+    conn.close()
+
+
+def get_movies(search: Optional[str] = None, genre: Optional[str] = None) -> List[Dict[str, Any]]:
+  """
+  Return movies including director, genres, poster_url, and average rating.
+
+  Optional filters:
+  - search: title contains
+  - genre: exact genre_name
+  """
+  where = []
+  params: List[Any] = []
+
+  if search:
+    where.append("m.title LIKE %s")
+    params.append(f"%{search}%")
+
+  if genre:
+    where.append("g.genre_name = %s")
+    params.append(genre)
+
+  where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+
+  query = f"""
     SELECT
       m.movie_id,
       m.title,
       m.release_year,
       m.duration,
       m.language,
-      m.director_id
+      m.director_id,
+      d.director_name AS director_name,
+      m.poster_url,
+      m.backdrop_url,
+      m.popularity,
+      m.is_oscar_winner,
+      m.country,
+      COALESCE(AVG(r.rating_value), NULL) AS average_rating,
+      COUNT(r.rating_id) AS rating_count,
+      GROUP_CONCAT(DISTINCT g.genre_name ORDER BY g.genre_name SEPARATOR '||') AS genres
     FROM movies m
     LEFT JOIN directors d ON m.director_id = d.director_id
+    LEFT JOIN movie_genres mg ON mg.movie_id = m.movie_id
+    LEFT JOIN genres g ON g.genre_id = mg.genre_id
+    LEFT JOIN ratings r ON r.movie_id = m.movie_id
+    {where_sql}
+    GROUP BY
+      m.movie_id, m.title, m.release_year, m.duration, m.language, m.director_id,
+      d.director_name, m.poster_url, m.backdrop_url, m.popularity, m.is_oscar_winner, m.country
     ORDER BY m.title;
   """
+
   conn = get_connection()
   try:
     with conn.cursor(dictionary=True) as cursor:
-      cursor.execute(query)
-      return cursor.fetchall()
+      cursor.execute(query, tuple(params))
+      rows = cursor.fetchall()
+      for row in rows:
+        raw = row.get("genres")
+        row["genres"] = raw.split("||") if raw else []
+        if row.get("average_rating") is not None:
+          row["average_rating"] = float(row["average_rating"])
+      return rows
   except Error as e:
-    print(f"Error in get_all_movies: {e}")
+    print(f"Error in get_movies: {e}")
     raise
   finally:
     conn.close()
@@ -37,7 +92,7 @@ def search_movies_by_title(keyword: str) -> List[Dict[str, Any]]:
       m.release_year,
       m.duration,
       m.language,
-      d.name AS director_name
+      d.director_name AS director_name
     FROM movies m
     LEFT JOIN directors d ON m.director_id = d.director_id
     WHERE m.title LIKE %s
@@ -66,10 +121,12 @@ def get_movie_details(movie_id: int) -> Optional[Dict[str, Any]]:
         m.movie_id,
         m.title,
         m.description,
+        m.full_description,
         m.release_year,
         m.duration,
         m.language,
-        m.director_id
+        m.director_id,
+        d.director_name AS director_name
       FROM movies m
       LEFT JOIN directors d ON m.director_id = d.director_id
       WHERE m.movie_id = %s;
@@ -82,7 +139,7 @@ def get_movie_details(movie_id: int) -> Optional[Dict[str, Any]]:
       result["movie"] = movie
 
     actors_query = """
-      SELECT a.actor_id, a.name
+      SELECT a.actor_id, a.actor_name
       FROM movie_actors ma
       JOIN actors a ON ma.actor_id = a.actor_id
       WHERE ma.movie_id = %s;
@@ -92,7 +149,7 @@ def get_movie_details(movie_id: int) -> Optional[Dict[str, Any]]:
       result["actors"] = cursor.fetchall()
 
     genres_query = """
-      SELECT g.genre_id, g.name
+      SELECT g.genre_id, g.genre_name
       FROM movie_genres mg
       JOIN genres g ON mg.genre_id = g.genre_id
       WHERE mg.movie_id = %s;

@@ -22,8 +22,11 @@ def create_app():
   # Allow React dev server to call this API
   CORS(
     app,
-    resources={r"/api/*": {"origins": "http://localhost:5173"}},
+    origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
     supports_credentials=True,
+    max_age=3600,
   )
 
   # Register blueprints

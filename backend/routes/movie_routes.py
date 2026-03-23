@@ -3,6 +3,7 @@ from controllers.movie_controller import (
   get_movies,
   get_movie,
   search_movies,
+  get_movie_categories,
   admin_create_movie,
   admin_update_movie_controller,
   admin_delete_movie_controller,
@@ -25,6 +26,11 @@ def get_movie_route(movie_id):
 @movie_bp.route("/movies/search", methods=["GET"])
 def search_movies_route():
   return search_movies()
+
+
+@movie_bp.route("/movies/categories", methods=["GET"])
+def movie_categories_route():
+  return get_movie_categories()
 
 
 @movie_bp.route("/admin/movies", methods=["POST"])
